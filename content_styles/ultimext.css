@@ -1,0 +1,48 @@
+#ultimate_extension_div {
+    width: 30vw;
+    height: 70vh;
+    position: fixed;
+    right: 50px;
+    top: 2rem;
+    z-index: 999999;
+    background: white;
+    display: block;
+    padding: 1rem;
+    border-radius: 1rem;
+    box-shadow: rgba(0, 0, 0, 0.4) 3px 3px 3px 3px;
+    overflow: auto;
+    color: black !important;
+}
+
+.ultimext_label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+.ultimext_textarea {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    resize: vertical;
+}
+
+#send_gemini {
+    background-color: #027edd;
+    color: white;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+#to_send_to_gemini {
+    max-width: 600px;
+    margin: 20px auto;
+    padding: 20px;
+    /* background-color: #f5f5f5; */
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}

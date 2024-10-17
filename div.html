@@ -1,0 +1,29 @@
+<h2 style="color: black !important;">Gemini Text and HTML Processor</h2>
+<form action="" id="to_send_to_gemini">
+    <div style="margin-bottom: 15px;">
+        <label class="ultimext_label" for="system_prompt">System Prompt:</label>
+        <textarea class="ultimext_textarea" id="system_prompt" name="system_prompt"></textarea>
+    </div>
+
+    <div style="margin-bottom: 15px;">
+        <label class="ultimext_label" for="context_textarea">Context:</label>
+        <textarea class="ultimext_textarea" id="context_textarea" name="context"></textarea>
+    </div>
+
+    <div style="margin-bottom: 15px;">
+        <label class="ultimext_label" for="prompt">Prompt:</label>
+        <input id="prompt" name="prompt"/>
+    </div>
+
+    <button id="send_gemini" type="submit">Send
+        Gemini</button>
+</form>
+<div style="color: black !important;" id="ultimext_result">
+
+</div>
+<h3 style="color: black !important;">Recent Requests</h3>
+<div style="color: black !important;" id="recent_requests">
+    <table style="color: black !important;" id="recent_requests">
+
+    </table>
+</div>
