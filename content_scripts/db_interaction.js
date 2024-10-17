@@ -1,100 +1,52 @@
 // Replace with your actual backend URL
-const BACKEND_URL = 'http://localhost:5000';
+const BACKEND_URL = 'https://localhost:5000';
+
+
+async function getAndJSON2(url) {
+    const resp = await fetch(url, {
+        // mode: 'no-cors'
+    });
+    const response = await resp.json();
+    return response;
+}
+
+async function postAndJSON2(url, data) {
+    const resp = await fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        // mode: 'no-cors',
+        body: JSON.stringify(data),
+    });
+
+    const response = await resp.json();
+
+    return response;
+}
 
 async function saveInDB(store, data) {
-    try {
-        const response = await fetch(`${BACKEND_URL}/db/${store}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(data),
-        });
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        return await response.json();
-    } catch (error) {
-        console.error('Error saving data:', error);
-        throw error;
-    }
+    data.action = 'save';
+    return await postAndJSON2(`${BACKEND_URL}/db/${store}`, data);
 }
 
 async function deleteFromDB(store, id) {
-    try {
-        const response = await fetch(`${BACKEND_URL}/db/${store}?id=${id}`, {
-            method: 'DELETE',
-        });
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        return true;
-    } catch (error) {
-        console.error('Error deleting data:', error);
-        throw error;
-    }
+    data.action = 'delete';
+    return await postAndJSON2(`${BACKEND_URL}/db/${store}`, {id});
 }
 
 async function getFromDB(store, id) {
-    try {
-        const response = await fetch(`${BACKEND_URL}/db/${store}?id=${id}`);
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        return await response.json();
-    } catch (error) {
-        console.error('Error getting data:', error);
-        throw error;
-    }
+    return await getAndJSON2(`${BACKEND_URL}/db/${store}?id=${id}`);
 }
 
 async function getAllFromStore(store) {
-    try {
-        const response = await fetch(`${BACKEND_URL}/db/${store}`);
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        return await response.json();
-    } catch (error) {
-        console.error('Error getting all data from store:', error);
-        throw error;
-    }
+    return await getAndJSON2(`${BACKEND_URL}/db/${store}`);
 }
 
 async function sendToGemini(data) {
-    try {
-        const response = await fetch(`${BACKEND_URL}/send_to_gemini`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(data),
-        });
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        return await response.json();
-    } catch (error) {
-        console.error('Error sending to Gemini:', error);
-        throw error;
-    }
+    return await postAndJSON2(`${BACKEND_URL}/send_to_gemini`, data);
 }
 
 async function getEmbedding(text) {
-    try {
-        const response = await fetch(`${BACKEND_URL}/get_embedding`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ text }),
-        });
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        return await response.json();
-    } catch (error) {
-        console.error('Error getting embedding:', error);
-        throw error;
-    }
+    return await postAndJSON2(`${BACKEND_URL}/get_embedding`, text);
 }

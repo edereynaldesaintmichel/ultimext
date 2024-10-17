@@ -1,5 +1,5 @@
 window.addEventListener('load', e => {
-    initDom();
+    initDomUltimext();
     getSystemPrompt();
 
     document.getElementById('to_send_to_gemini').addEventListener('submit', async e => {
@@ -10,7 +10,9 @@ window.addEventListener('load', e => {
             acc[curr[0]] = curr[1];
             return acc;
         }, {});
-
+        const scriptElement = document.createElement('script');
+        scriptElement.innerHTML = 'console.log("prout");';
+        document.body.appendChild(scriptElement);
         const response = await sendDataToGemini(data);
         processGeminiResponse(response.result);
     });
@@ -26,10 +28,9 @@ function processGeminiResponse(response) {
     }
     scripts.forEach(script => {
         const code = script.replace(/<script>|<\/script>/g, '');
-        // const scriptElement = document.createElement('script');
-        eval(code);
-        // scriptElement.innerHTML = code;
-        // document.body.appendChild(scriptElement);
+        const scriptElement = document.createElement('script');
+        scriptElement.innerHTML = code;
+        document.body.appendChild(scriptElement);
     });
 }
 
@@ -73,36 +74,23 @@ async function getSystemPrompt() {
     }
 }
 
-document.addEventListener('keydown', e => {
+document.addEventListener('keydown', async e => {
     if (!e.ctrlKey || e.key !== 's' || !e.target.closest('#system_prompt')) {
         return;
     }
     e.preventDefault();
     const textarea = document.getElementById('system_prompt');
-    saveInDB('system_prompts', {
-        id: 1,
-        text: textarea.value
-    });
+    try {
+        await saveInDB('system_prompts', {
+            id: '1',
+            text: textarea.value
+        });
+    } catch (error) {
+        console.error('Error saving system prompt:', error);
+    }
 });
 
-async function getPromptList() {
-    const prompts = await getAllFromStore('prompts');
-    if (!prompts) {
-        return;
-    }
-    const prompt_select = document.getElementById('prompt_select123456');
-    prompt_select.innerHTML = '';
-
-
-    for (const prompt of prompts) {
-        const option = document.createElement('option');
-        option.text = prompt.text;
-        option.id = prompt.id;
-        prompt_select.appendChild(option);
-    }
-}
-
-function initDom() {
+function initDomUltimext() {
     const app_div = document.createElement('div');
     app_div.id = "ultimate_extension_div";
     app_div.style.display = "none";

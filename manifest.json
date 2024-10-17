@@ -5,13 +5,10 @@
   "description": "Select text or elements, send to Google Gemini for processing, and manage prompts",
   "permissions": ["contextMenus", "activeTab", "storage", "scripting", "tabs"],
   "host_permissions": ["*://*/*"],
-  "background": {
-    "service_worker": "background.js",
-    "type": "module"
-  },
   "content_scripts": [
     {
       "all_frames": true,
+      "world": "MAIN",
       "run_at": "document_idle",
       "matches": ["<all_urls>"],
       "js": ["content_scripts/db_interaction.js", "content_scripts/contentScript.js"],
