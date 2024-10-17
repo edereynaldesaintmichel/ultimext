@@ -1,3 +1,12 @@
+const escapeHTMLPolicy = trustedTypes.createPolicy("forceInner", {
+    createHTML: (to_escape) => to_escape
+});
+
+const trustedScriptPolicy = trustedTypes.createPolicy("trustedScriptPolicy", {
+    createScript: (scriptString) => scriptString
+});
+
+
 window.addEventListener('load', e => {
     initDomUltimext();
     getSystemPrompt();
@@ -10,12 +19,24 @@ window.addEventListener('load', e => {
             acc[curr[0]] = curr[1];
             return acc;
         }, {});
-        const scriptElement = document.createElement('script');
-        scriptElement.innerHTML = 'console.log("prout");';
-        document.body.appendChild(scriptElement);
         const response = await sendDataToGemini(data);
         processGeminiResponse(response.result);
     });
+});
+
+
+document.addEventListener('focusin', e => {
+    if (e.target.closest('#ultimate_extension_div')) {
+        e.stopImmediatePropagation();
+        e.stopPropagation();
+    }
+});
+
+document.addEventListener('mousedown', e => {
+    if (e.target.closest('#ultimate_extension_div')) {
+        e.stopImmediatePropagation();
+        e.stopPropagation();
+    }
 });
 
 
@@ -29,7 +50,7 @@ function processGeminiResponse(response) {
     scripts.forEach(script => {
         const code = script.replace(/<script>|<\/script>/g, '');
         const scriptElement = document.createElement('script');
-        scriptElement.innerHTML = code;
+        scriptElement.textContent = trustedScriptPolicy.createScript(code);
         document.body.appendChild(scriptElement);
     });
 }
@@ -94,7 +115,7 @@ function initDomUltimext() {
     const app_div = document.createElement('div');
     app_div.id = "ultimate_extension_div";
     app_div.style.display = "none";
-    app_div.innerHTML = `<h2 style="color: black !important;">Gemini Text and HTML Processor</h2>
+    app_div.innerHTML = escapeHTMLPolicy.createHTML(`<h2 style="color: black !important;">Gemini Text and HTML Processor</h2>
     <form action="" id="to_send_to_gemini">
         <div style="margin-bottom: 15px;">
             <label class="ultimext_label" for="system_prompt">System Prompt:</label>
@@ -122,10 +143,10 @@ function initDomUltimext() {
         <table style="color: black !important;" id="recent_requests">
     
         </table>
-    </div>`;
+    </div>`);
 
     const button = document.createElement('button');
-    button.innerHTML = 'UltimExt';
+    button.innerHTML = escapeHTMLPolicy.createHTML('UltimExt');
     button.style.cssText = "color: white;background-color: #027edd;padding: 1rem;position: fixed;bottom: 5rem;right: 1rem;border: none;border-radius: 1rem;font-size: 1.5rem;font-weight: bold;cursor: pointer; z-index:99999;";
     button.id = "toggle_ultimext";
     button.addEventListener('click', e => {
