@@ -2,10 +2,26 @@ const escapeHTMLPolicy = trustedTypes.createPolicy("forceInner", {
     createHTML: (to_escape) => to_escape
 });
 
+let selection_start;
+let selection_end;
+let context_element;
+
 const trustedScriptPolicy = trustedTypes.createPolicy("trustedScriptPolicy", {
     createScript: (scriptString) => scriptString
 });
 
+
+function downloadFile(content, name, blob_options = {}) {
+    let file = window.URL.createObjectURL(new Blob([content], blob_options));
+    var a = document.createElement("a");
+    document.body.appendChild(a);
+    a.style = "display: none";
+    a.href = file;
+    a.download = name;
+    a.click();
+    window.URL.revokeObjectURL(file);
+    document.body.removeChild(a);
+}
 
 window.addEventListener('load', e => {
     initDomUltimext();
@@ -20,7 +36,7 @@ window.addEventListener('load', e => {
             return acc;
         }, {});
         const response = await sendDataToGemini(data);
-        processGeminiResponse(response.result);
+        processGeminiResponse(response);
     });
 });
 
@@ -48,7 +64,10 @@ function processGeminiResponse(response) {
         return;
     }
     scripts.forEach(script => {
-        const code = script.replace(/<script>|<\/script>/g, '');
+        let code = script.replace(/<script>|<\/script>/g, '');
+        code = `(function() {
+            ${code}
+          })()`;
         const scriptElement = document.createElement('script');
         scriptElement.textContent = trustedScriptPolicy.createScript(code);
         document.body.appendChild(scriptElement);
@@ -75,7 +94,7 @@ async function sendDataToGemini(data) {
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
-        return await response.json();
+        return (await response.json()).result;
     } catch (error) {
         console.error('Error sending data to Gemini:', error);
         throw error;
@@ -154,6 +173,14 @@ function initDomUltimext() {
     });
     document.body.appendChild(app_div);
     document.body.appendChild(button);
+
+    document.getElementById('user_prompt_123456').addEventListener('keydown', e => {
+         if (e.key !== 'Enter') {
+            return;
+         }
+         e.preventDefault();
+         e.target.closest('form').dispatchEvent(new Event('submit'));
+    });
 }
 
 function toggleUltimext() {
@@ -183,6 +210,12 @@ document.addEventListener('contextmenu', e => {
 });
 
 document.addEventListener('mousedown', e => {
+    selection_end = null;
+    selection_start = null;
+    context_element = null;
+    for (const element of [...document.getElementsByClassName('context_element')]) {
+        element.classList.remove('context_element');
+    }
     if (e.target.closest('#ultimate_extension_div') || e.target.closest('#toggle_ultimext')) {
         return;
     }
@@ -191,6 +224,21 @@ document.addEventListener('mousedown', e => {
         return;
     }
     e.preventDefault();
+    selection_start = e.target;
+    selection_end = null;
+    document.addEventListener('mousemove', onMouseMoveWhenRightButtonDown);
+});
+
+
+document.addEventListener('mouseup', e => {
+    document.removeEventListener('mousemove', onMouseMoveWhenRightButtonDown);
+
+    if (e.target.closest('#ultimate_extension_div') || e.target.closest('#toggle_ultimext')) {
+        return;
+    }
+    if (e.button !== 2) {
+        return;
+    }
     showUltimext();
     const selection = document.getSelection();
     const context_textarea = document.getElementById('context_textarea');
@@ -198,7 +246,7 @@ document.addEventListener('mousedown', e => {
     if (selection.anchorNode !== null && !selection.isCollapsed) {
         context = selection.toString();
     } else {
-        context = e.target.outerHTML;
+        context = js_beautify(cleanHTML((context_element ?? selection_start).outerHTML));
     }
     context_textarea.value = context;
     resizeTextarea(context_textarea);
@@ -206,6 +254,25 @@ document.addEventListener('mousedown', e => {
     document.getElementById('user_prompt_123456').focus();
 });
 
+function getLowestCommonAncestor(element1, element2) {
+    if (!element1 || !element2) return null;
+
+    const ancestors = new Set();
+
+    while (element1) {
+        ancestors.add(element1);
+        if (element1 === document.documentElement) break;
+        element1 = element1.parentElement;
+    }
+
+    while (element2) {
+        if (ancestors.has(element2)) return element2;
+        if (element2 === document.documentElement) break;
+        element2 = element2.parentElement;
+    }
+
+    return null;
+}
 
 function findSmallestEnclosingDiv(selection) {
     if (!selection || selection.rangeCount === 0) {
@@ -241,7 +308,8 @@ function nodeContainsSelection(node, range) {
 
 function cleanHTML(html_string) {
     const tags_to_remove = ['script', 'style', 'link', 'meta', 'noscript', 'iframe', 'svg', 'canvas', 'code'];
-    const attributes_to_keep = new Set(['id', 'src', 'href', 'class']);
+    const tags_to_keep = new Set(['table', 'tr', 'th', 'td', 'thead']);
+    const attributes_to_keep = new Set(['id', 'src', 'href', 'class', 'title']);
     const query_selectors_to_remove = ["#ultimate_extension_div", '#toggle_ultimext'];
 
     // Create a DOM parser
@@ -272,7 +340,7 @@ function cleanHTML(html_string) {
 
     // Function to simplify DOM
     function simplifyDOM(element) {
-        if (element.children.length === 1) {
+        if (element.children.length === 1 && !tags_to_keep.has(element.tagName.toLowerCase())) {
             const child = element.firstElementChild;
             if (element !== doc.body) {
                 element.parentNode.replaceChild(child, element);
@@ -291,4 +359,16 @@ function cleanHTML(html_string) {
 
     // Return the cleaned HTML
     return doc.body.innerHTML;
+}
+
+
+function onMouseMoveWhenRightButtonDown(e) {
+
+    for (const element of [...document.getElementsByClassName('context_element')]) {
+        element.classList.remove('context_element');
+    }
+    selection_end = e.target;
+
+    context_element = getLowestCommonAncestor(selection_start, selection_end);
+    context_element.classList.add('context_element');
 }
