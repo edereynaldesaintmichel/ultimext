@@ -13,7 +13,7 @@ const trustedScriptPolicy = trustedTypes.createPolicy("trustedScriptPolicy", {
 
 function downloadFile(content, name, blob_options = {}) {
     let file = window.URL.createObjectURL(new Blob([content], blob_options));
-    var a = document.createElement("a");
+    let a = document.createElement("a");
     document.body.appendChild(a);
     a.style = "display: none";
     a.href = file;
@@ -23,22 +23,47 @@ function downloadFile(content, name, blob_options = {}) {
     document.body.removeChild(a);
 }
 
+function downloadFileFromSrc(src, name) {
+    let a = document.createElement("a");
+    document.body.appendChild(a);
+    a.style = "display: none";
+
+    fetch(src)
+        .then(response => response.blob())
+        .then(blob => {
+            const url = window.URL.createObjectURL(blob);
+            a.href = url;
+            a.download = name;
+            a.click();
+            window.URL.revokeObjectURL(url);
+        });
+}
+
 window.addEventListener('load', e => {
     initDomUltimext();
     getSystemPrompt();
 
     document.getElementById('to_send_to_gemini').addEventListener('submit', async e => {
         e.preventDefault();
-        const form_data = new FormData(e.target);
-
-        const data = [...form_data.entries()].reduce((acc, curr) => {
-            acc[curr[0]] = curr[1];
-            return acc;
-        }, {});
-        const response = await sendDataToGemini(data);
-        processGeminiResponse(response);
+        const data = getDataToSend();
+        const response = await getLLMCompletion(data);
+        processLLMResponse(response);
     });
 });
+
+function getDataToSend() {
+    const form_data = new FormData(document.getElementById('to_send_to_gemini'));
+
+    const data = [...form_data.entries()].reduce((acc, curr) => {
+        acc[curr[0]] = curr[1];
+        return acc;
+    }, {});
+    if (document.getElementById('context_textarea').getAttribute('data-context_type') === 'html') {
+        data.context = `Page url: ${location.href} \n\n HTML: ${data.context}`;
+    }
+
+    return data;
+}
 
 
 document.addEventListener('focusin', e => {
@@ -56,9 +81,14 @@ document.addEventListener('mousedown', e => {
 });
 
 
-function processGeminiResponse(response) {
-    document.getElementById('ultimext_result').innerText = response;
+function processLLMResponse(response) {
+    const result_textarea = document.getElementById('ultimext_result');
+    result_textarea.value = response;
+    resizeTextarea(result_textarea);
+    runResponseScript(response);
+}
 
+function runResponseScript(response) {
     const scripts = response.match(/<script>([\s\S]*?)<\/script>/g);
     if (!scripts) {
         return;
@@ -74,17 +104,33 @@ function processGeminiResponse(response) {
     });
 }
 
-async function simpleSendGemini(prompt, system_prompt = "", context = "") {
-    return sendDataToGemini({
-        system_prompt,
-        prompt,
-        context,
-    });
+
+function runScript() {
+    const result = document.getElementById('ultimext_result').value;
+
+    runResponseScript(result);
 }
 
-async function sendDataToGemini(data) {
+async function simpleGetCompletion(prompt, system_prompt = "", context = "", provider = "openAI") {
+    return getLLMCompletion({
+        system_prompt,
+        prompt,
+        context
+    }, provider);
+}
+
+async function getLLMCompletion(data, provider = "openAI") {
+    const provider_routes = {
+        openAI: "send_to_openai",
+        gemini: "send_to_gemini",
+    };
+    if (!provider_routes[provider]) {
+        return {
+            result: "alert('bad provider')"
+        };
+    }
     try {
-        const response = await fetch(`${BACKEND_URL}/send_to_gemini`, {
+        const response = await fetch(`${BACKEND_URL}/${provider_routes[provider]}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -96,7 +142,7 @@ async function sendDataToGemini(data) {
         }
         return (await response.json()).result;
     } catch (error) {
-        console.error('Error sending data to Gemini:', error);
+        console.error('Error getting completion:', error);
         throw error;
     }
 }
@@ -151,18 +197,25 @@ function initDomUltimext() {
             <input class="ultimext_textarea" id="user_prompt_123456" name="prompt"/>
         </div>
     
-        <button id="send_gemini" type="submit">Send
+        <button id="send_gemini" class="ultimext_button" type="submit">Send
             Gemini</button>
     </form>
-    <div style="color: black !important;" id="ultimext_result">
+    <h4 style="color: black !important; margin-top: 2rem;">Résultat</h4>
+    <textarea class="ultimext_textarea" id="ultimext_result">
     
-    </div>
-    <h3 style="color: black !important;">Recent Requests</h3>
-    <div style="color: black !important;" id="recent_requests">
-        <table style="color: black !important;" id="recent_requests">
-    
-        </table>
-    </div>`);
+    </textarea>
+    <button id="run_script" class="ultimext_button" onclick="runScript()">Run script</button>
+    <button id="downvote_button" class="ultimext_button danger" onclick="downvote()">Downvote</button>
+    <button id="save_fine_tuning_example" class="ultimext_button success" onclick="saveFineTuningExample()">Save training example</button>
+
+    <dialog id="hint_dialog">
+        <div id="hint_container" style="margin-bottom: 15px;">
+            <label class="ultimext_label" for="hint_textarea">Hint:</label>
+            <textarea class="ultimext_textarea" id="hint_textarea" name="hint" oninput="resizeTextarea(this)"></textarea>
+        </div>
+        <button id="submit_hint" class="ultimext_button" onclick="submitHint()">Submit Hint</button>
+    </dialog>
+    `);
 
     const button = document.createElement('button');
     button.innerHTML = escapeHTMLPolicy.createHTML('UltimExt');
@@ -175,12 +228,31 @@ function initDomUltimext() {
     document.body.appendChild(button);
 
     document.getElementById('user_prompt_123456').addEventListener('keydown', e => {
-         if (e.key !== 'Enter') {
+        if (e.key !== 'Enter') {
             return;
-         }
-         e.preventDefault();
-         e.target.closest('form').dispatchEvent(new Event('submit'));
+        }
+        e.preventDefault();
+        e.target.closest('form').dispatchEvent(new Event('submit'));
     });
+}
+
+function downvote() {
+    document.getElementById('hint_dialog').showModal();
+}
+
+
+async function submitHint() {
+    const data = getDataToSend();
+    data.prompt = data.prompt + `\nHint:\n\n${document.getElementById('hint_textarea').value}`;
+    const response = await getLLMCompletion(data);
+    processLLMResponse(response);
+}
+
+
+async function saveFineTuningExample() {
+    const data = getDataToSend();
+    data.result = document.getElementById('ultimext_result').value;
+    await postAndJSON2(`${BACKEND_URL}/save_fine_tuning_example`, data);
 }
 
 function toggleUltimext() {
@@ -243,12 +315,15 @@ document.addEventListener('mouseup', e => {
     const selection = document.getSelection();
     const context_textarea = document.getElementById('context_textarea');
     let context = '';
+    let context_type = 'text';
     if (selection.anchorNode !== null && !selection.isCollapsed) {
         context = selection.toString();
     } else {
-        context = js_beautify(cleanHTML((context_element ?? selection_start).outerHTML));
+        context = html_beautify(cleanHTML((context_element ?? selection_start).outerHTML));
+        context_type = 'html';
     }
     context_textarea.value = context;
+    context_textarea.setAttribute('data-context_type', context_type);
     resizeTextarea(context_textarea);
 
     document.getElementById('user_prompt_123456').focus();
@@ -308,13 +383,13 @@ function nodeContainsSelection(node, range) {
 
 function cleanHTML(html_string) {
     const tags_to_remove = ['script', 'style', 'link', 'meta', 'noscript', 'iframe', 'svg', 'canvas', 'code'];
-    const tags_to_keep = new Set(['table', 'tr', 'th', 'td', 'thead']);
-    const attributes_to_keep = new Set(['id', 'src', 'href', 'class', 'title']);
+    const tags_to_keep = new Set(['table', 'tr', 'th', 'td', 'thead', 'a']);
+    const attributes_to_keep = { id: 50, src: 50, href: 500, class: 50, title: 250 };
     const query_selectors_to_remove = ["#ultimate_extension_div", '#toggle_ultimext'];
 
     // Create a DOM parser
     const parser = new DOMParser();
-    const doc = parser.parseFromString(html_string, 'text/html');
+    const doc = parser.parseFromString(escapeHTMLPolicy.createHTML(html_string), 'text/html');
 
     tags_to_remove.forEach(tag => {
         for (const element of [...doc.getElementsByTagName(tag)]) {
@@ -332,7 +407,7 @@ function cleanHTML(html_string) {
     function cleanAttributes(element) {
         const attrs = [...element.attributes];
         for (const attribute of attrs) {
-            if (!attributes_to_keep.has(attribute.name) || attribute.value.length > 50) {
+            if (!attributes_to_keep[attribute.name] || attribute.value.length > attributes_to_keep[attribute.name]) {
                 element.removeAttribute(attribute.name);
             }
         }

@@ -28,7 +28,7 @@
     resize: vertical;
 }
 
-#send_gemini {
+.ultimext_button {
     background-color: #027edd;
     color: white;
     padding: 10px 15px;
@@ -50,4 +50,16 @@
 
 .context_element {
     border: 2px orange solid !important;
+}
+
+.d-none {
+    display: none;
+}
+
+.danger {
+    background-color: orangered!important;
+}
+
+.success {
+    background-color: rgb(75, 209, 75)!important;
 }
