@@ -5,39 +5,11 @@ const escapeHTMLPolicy = trustedTypes.createPolicy("forceInner", {
 let selection_start;
 let selection_end;
 let context_element;
+const url = new URL(location.href);
 
 const trustedScriptPolicy = trustedTypes.createPolicy("trustedScriptPolicy", {
     createScript: (scriptString) => scriptString
 });
-
-
-function downloadFile(content, name, blob_options = {}) {
-    let file = window.URL.createObjectURL(new Blob([content], blob_options));
-    let a = document.createElement("a");
-    document.body.appendChild(a);
-    a.style = "display: none";
-    a.href = file;
-    a.download = name;
-    a.click();
-    window.URL.revokeObjectURL(file);
-    document.body.removeChild(a);
-}
-
-function downloadFileFromSrc(src, name) {
-    let a = document.createElement("a");
-    document.body.appendChild(a);
-    a.style = "display: none";
-
-    fetch(src)
-        .then(response => response.blob())
-        .then(blob => {
-            const url = window.URL.createObjectURL(blob);
-            a.href = url;
-            a.download = name;
-            a.click();
-            window.URL.revokeObjectURL(url);
-        });
-}
 
 window.addEventListener('load', e => {
     initDomUltimext();
@@ -49,6 +21,12 @@ window.addEventListener('load', e => {
         const response = await getLLMCompletion(data);
         processLLMResponse(response);
     });
+    if (url.searchParams.get('parse_html_id')) {
+        document.addEventListener('domStable', e => {
+            console.log('DOM is now stable!!!');
+            sendPageHTML(url.toString());
+        });
+    }
 });
 
 function getDataToSend() {
@@ -95,7 +73,7 @@ function runResponseScript(response) {
     }
     scripts.forEach(script => {
         let code = script.replace(/<script>|<\/script>/g, '');
-        code = `(function() {
+        code = `(async function() {
             ${code}
           })()`;
         const scriptElement = document.createElement('script');
@@ -109,14 +87,6 @@ function runScript() {
     const result = document.getElementById('ultimext_result').value;
 
     runResponseScript(result);
-}
-
-async function simpleGetCompletion(prompt, system_prompt = "", context = "", provider = "openAI") {
-    return getLLMCompletion({
-        system_prompt,
-        prompt,
-        context
-    }, provider);
 }
 
 async function getLLMCompletion(data, provider = "openAI") {
@@ -349,96 +319,8 @@ function getLowestCommonAncestor(element1, element2) {
     return null;
 }
 
-function findSmallestEnclosingDiv(selection) {
-    if (!selection || selection.rangeCount === 0) {
-        return null;
-    }
-
-    const range = selection.getRangeAt(0);
-    let currentNode = range.commonAncestorContainer;
-
-    if (currentNode.nodeType === Node.TEXT_NODE) {
-        currentNode = currentNode.parentNode;
-    }
-    while (currentNode && currentNode !== document.body) {
-        if (nodeContainsSelection(currentNode, range)) {
-            return currentNode;
-        }
-        currentNode = currentNode.parentNode;
-    }
-
-    return null;
-}
-
-function nodeContainsSelection(node, range) {
-    const nodeRange = document.createRange();
-    nodeRange.selectNodeContents(node);
-
-    return (
-        nodeRange.compareBoundaryPoints(Range.START_TO_START, range) <= 0 &&
-        nodeRange.compareBoundaryPoints(Range.END_TO_END, range) >= 0
-    );
-}
-
-
-function cleanHTML(html_string) {
-    const tags_to_remove = ['script', 'style', 'link', 'meta', 'noscript', 'iframe', 'svg', 'canvas', 'code'];
-    const tags_to_keep = new Set(['table', 'tr', 'th', 'td', 'thead', 'a']);
-    const attributes_to_keep = { id: 50, src: 50, href: 500, class: 50, title: 250 };
-    const query_selectors_to_remove = ["#ultimate_extension_div", '#toggle_ultimext'];
-
-    // Create a DOM parser
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(escapeHTMLPolicy.createHTML(html_string), 'text/html');
-
-    tags_to_remove.forEach(tag => {
-        for (const element of [...doc.getElementsByTagName(tag)]) {
-            element.remove();
-        }
-    });
-
-    for (const qs of query_selectors_to_remove) {
-        for (const element of [...doc.querySelectorAll(qs)]) {
-            element.remove();
-        }
-    }
-
-    // Function to clean attributes
-    function cleanAttributes(element) {
-        const attrs = [...element.attributes];
-        for (const attribute of attrs) {
-            if (!attributes_to_keep[attribute.name] || attribute.value.length > attributes_to_keep[attribute.name]) {
-                element.removeAttribute(attribute.name);
-            }
-        }
-    }
-
-    // Function to simplify DOM
-    function simplifyDOM(element) {
-        if (element.children.length === 1 && !tags_to_keep.has(element.tagName.toLowerCase())) {
-            const child = element.firstElementChild;
-            if (element !== doc.body) {
-                element.parentNode.replaceChild(child, element);
-            }
-            simplifyDOM(child);
-        } else {
-            for (let i = element.children.length - 1; i >= 0; i--) {
-                simplifyDOM(element.children[i]);
-            }
-        }
-        cleanAttributes(element);
-    }
-
-    // Start simplifying from the body
-    simplifyDOM(doc.body);
-
-    // Return the cleaned HTML
-    return doc.body.innerHTML;
-}
-
 
 function onMouseMoveWhenRightButtonDown(e) {
-
     for (const element of [...document.getElementsByClassName('context_element')]) {
         element.classList.remove('context_element');
     }
@@ -447,3 +329,4 @@ function onMouseMoveWhenRightButtonDown(e) {
     context_element = getLowestCommonAncestor(selection_start, selection_end);
     context_element.classList.add('context_element');
 }
+

@@ -3,16 +3,35 @@
   "name": "Gemini Text and HTML Processor",
   "version": "1.2",
   "description": "Select text or elements, send to Google Gemini for processing, and manage prompts",
-  "permissions": ["contextMenus", "activeTab", "storage", "scripting", "tabs",  "declarativeNetRequest"],
-  "host_permissions": ["*://*/*"],
+  "permissions": [
+    "contextMenus",
+    "activeTab",
+    "storage",
+    "scripting",
+    "tabs",
+    "declarativeNetRequest"
+  ],
+  "host_permissions": [
+    "*://*/*"
+  ],
   "content_scripts": [
     {
       "all_frames": true,
       "world": "MAIN",
-      "run_at": "document_idle",
-      "matches": ["<all_urls>"],
-      "js": ["content_scripts/db_interaction.js", "content_scripts/contentScript.js", "content_scripts/js-beautify.js"],
-      "css": ["content_styles/ultimext.css"]
+      "run_at": "document_start",
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content_scripts/db_interaction.js",
+        "content_scripts/helper_functions.js",
+        "content_scripts/contentScript.js",
+        "content_scripts/js-beautify.js",
+        "content_scripts/dom_loader.js"
+      ],
+      "css": [
+        "content_styles/ultimext.css"
+      ]
     }
   ],
   "icons": {
