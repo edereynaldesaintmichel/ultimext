@@ -36,17 +36,17 @@ async function simpleGetCompletion(prompt, system_prompt = "", context = "", pro
 }
 
 
-function handleShittyUrls(href) {
+function handleShittyUrls(href, node) {
     try {
         const parsed_url = new URL(href);
-        if (parsed_url.origin) { // It's a real src or href
+        if (parsed_url.origin && parsed_url.origin !== "null") { // It's a real src or href
             const base = parsed_url.origin.replace(url.origin, '') + parsed_url.pathname;
-            if (base.length > 50) {
+            if (base.length > 70) {
                 return null;
             }
             const search_param_keys = [...parsed_url.searchParams.keys()].reverse();
             for (let i = 0; i < search_param_keys.length; i++) {
-                if (base.length + parsed_url.search.length <= 50) {
+                if (base.length + parsed_url.search.length <= 70) {
                     break;
                 }
                 parsed_url.searchParams.delete(search_param_keys[i]);
@@ -59,19 +59,72 @@ function handleShittyUrls(href) {
     }  
 }
 
+function handleTitle(title, node) {
+    if (title.trim() === node.innerText.trim()) {
+        return "";
+    }
+    return title;
+}
 
-function optimizeClassNames() {
-    
+
+function optimizeClassNames(doc_body) {
+    let elements_by_class_name = {};
+    let unique_classes = new Set();
+
+    const elements = doc_body.querySelectorAll('*');
+
+    let i = 0;
+    for (const element of elements) {
+        element.ordering_number = i;
+        i++;
+        const class_list = element.classList;
+        for (const c of class_list) {
+            unique_classes.add(c);
+        }
+    }
+
+    for (const class_name of unique_classes) {
+        elements_by_class_name[class_name] = [...doc_body.getElementsByClassName(class_name)].map(x => x.ordering_number).sort().join(',');
+    }
+
+    delete(elements_by_class_name.context_element);
+
+    const class_names_by_node_collection = Object.entries(elements_by_class_name).reduce((acc, key_value) => {
+        const elements_hash = key_value[1];
+        acc[elements_hash] ??= [];
+        acc[elements_hash].push(key_value[0]);
+        return acc;
+    }, {});
+
+    let sub_optimal_classes = [];
+    for (const element_hash in class_names_by_node_collection) {
+        const class_names = class_names_by_node_collection[element_hash];
+        if (class_names.length === 1) {
+            continue;
+        }
+        const to_remove = class_names.sort((x, y) => x.length - y.length).slice(1);
+        for (const class_name of to_remove) {
+            sub_optimal_classes.push(class_name);
+            for (const element of [...doc_body.getElementsByClassName(class_name)]) {
+                element.classList.remove(class_name);
+            }
+        }
+    }
+
+    return sub_optimal_classes;
 }
 
 function cleanHTML(html_string) {
-    const tags_to_remove = ['script', 'style', 'link', 'meta', 'noscript', 'iframe', 'svg', 'canvas', 'code', 'noscript', 'i'];
+    const tags_to_remove = ['script', 'style', 'link', 'meta', 'noscript', 'iframe', 'svg', 'code', 'noscript', 'i'];
     const max_length_attributes_to_keep = { id: 50, class: 50, title: 250, name: 50, value: 50 };
     const query_selectors_to_remove = ["#ultimate_extension_div", '#toggle_ultimext'];
-    const to_remove_if_empty = ['div', 'span', 'a'];
+    const to_remove_if_empty = ['div', 'span', 'li', 'p', 'td', 'th', 'tr', 'table'];
+    const tags_to_keep = new Set(['table', 'tr', 'th', 'td', 'thead', 'a', 'button', 'li']);
+
     const attributes_functions = {
         src: handleShittyUrls,
         href: handleShittyUrls,
+        title: handleTitle,
     }
 
     // Create a DOM parser
@@ -111,20 +164,20 @@ function cleanHTML(html_string) {
         const attrs_array = [...attrs];
         for (const attribute of attrs_array) {
             if (attributes_functions[attribute.name]) {
-                const new_value = attributes_functions[attribute.name](node[attribute.name]);
+                const new_value = attributes_functions[attribute.name](node[attribute.name], node);
                 if (new_value) {
                     node[attribute.name] = new_value;
+                    continue;
                 }
                 node.removeAttribute(attribute.name);
                 continue;
             }
-            if (!max_length_attributes_to_keep[attribute.name] || attribute.value.length > max_length_attributes_to_keep[attribute.name]) {
+            if (!max_length_attributes_to_keep[attribute.name] || attribute.value.length > max_length_attributes_to_keep[attribute.name] || !attribute.value) {
                 node.removeAttribute(attribute.name);
             }
         }
     }
 
-    const tags_to_keep = new Set(['table', 'tr', 'th', 'td', 'thead', 'a', 'button']);
     function onlyChildPolicy(node) {
         cleanAttributes(node);
         const filtered_out_nodes = [...node.childNodes].filter(x => x.data?.trim() === "");
@@ -138,6 +191,10 @@ function cleanHTML(html_string) {
             if (tags_to_keep.has(node.tagName.toLowerCase())) {
                 node.replaceChild(onlyChildPolicy(child_node), child_node);
                 return node;
+            }
+            if (child_node.nodeType === Node.TEXT_NODE) {
+                child_node.data = " " + child_node.data;
+                return child_node;
             }
             return onlyChildPolicy(child_node);
         }
@@ -160,7 +217,7 @@ function cleanHTML(html_string) {
             element.remove();
         }
     }
-
+    optimizeClassNames(doc.body);
     // Return the cleaned HTML
     return normalizeWhitespace(doc.body.innerHTML);
 }
