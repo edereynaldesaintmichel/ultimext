@@ -40,7 +40,7 @@ function handleShittyUrls(href, node) {
     try {
         const parsed_url = new URL(href);
         if (parsed_url.origin && parsed_url.origin !== "null") { // It's a real src or href
-            const base = parsed_url.origin.replace(url.origin, '') + parsed_url.pathname;
+            const base = parsed_url.origin.replace(current_page_url.origin, '') + parsed_url.pathname;
             if (base.length > 70) {
                 return null;
             }
@@ -114,9 +114,9 @@ function optimizeClassNames(doc_body) {
     return sub_optimal_classes;
 }
 
-function cleanHTML(html_string) {
+function cleanHTML(html_string, ) {
     const tags_to_remove = ['script', 'style', 'link', 'meta', 'noscript', 'iframe', 'svg', 'code', 'noscript', 'i'];
-    const max_length_attributes_to_keep = { id: 50, class: 50, title: 250, name: 50, value: 50 };
+    const max_length_attributes_to_keep = { id: 50, class: 0, title: 250, name: 50, value: 50 };
     const query_selectors_to_remove = ["#ultimate_extension_div", '#toggle_ultimext'];
     const to_remove_if_empty = ['div', 'span', 'li', 'p', 'td', 'th', 'tr', 'table'];
     const tags_to_keep = new Set(['table', 'tr', 'th', 'td', 'thead', 'a', 'button', 'li']);
@@ -219,6 +219,7 @@ function cleanHTML(html_string) {
     }
     optimizeClassNames(doc.body);
     // Return the cleaned HTML
+    doc.body.firstElementChild.classList.add('context_element');
     return normalizeWhitespace(doc.body.innerHTML);
 }
 
@@ -244,12 +245,14 @@ async function getPageHTML(address) { // returns a webpage html
     open(url, '_blank');
 
     const result = await getAndJSON2(`${BACKEND_URL}/get_html?parse_html_id=${uniq}`);
-
+    if (result.success === false) {
+        return false;
+    }
     return result.html;
 }
 
 async function sendPageHTML(address) { // Here, the address will most of the time be equal to location.href
-    const html = html_beautify(cleanHTML(document.body.outerHTML));
+    const html = html_beautify(cleanHTML2(document.body.outerHTML));
     const parse_html_id = (new URL(address)).searchParams.get('parse_html_id');
     await postAndJSON2(`${BACKEND_URL}/submit_html`, {
         parse_html_id,
@@ -257,4 +260,19 @@ async function sendPageHTML(address) { // Here, the address will most of the tim
     });
 
     close();
+}
+
+
+
+
+
+function cleanHTML2(html_string) {
+    let last_length = Infinity;
+    let html = html_string;
+    while (html.length < last_length ) {
+        last_length = html.length
+        html = cleanHTML(document.body.outerHTML)
+    }
+
+    return html;
 }

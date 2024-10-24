@@ -5,7 +5,7 @@ const escapeHTMLPolicy = trustedTypes.createPolicy("forceInner", {
 let selection_start;
 let selection_end;
 let context_element;
-const url = new URL(location.href);
+const current_page_url = new URL(location.href);
 
 const trustedScriptPolicy = trustedTypes.createPolicy("trustedScriptPolicy", {
     createScript: (scriptString) => scriptString
@@ -21,10 +21,10 @@ window.addEventListener('load', e => {
         const response = await getLLMCompletion(data);
         processLLMResponse(response);
     });
-    if (url.searchParams.get('parse_html_id')) {
+    if (current_page_url.searchParams.get('parse_html_id')) {
         document.addEventListener('domStable', e => {
             console.log('DOM is now stable!!!');
-            sendPageHTML(url.toString());
+            sendPageHTML(current_page_url.toString());
         });
     }
 });
@@ -63,19 +63,24 @@ function processLLMResponse(response) {
     const result_textarea = document.getElementById('ultimext_result');
     result_textarea.value = response;
     resizeTextarea(result_textarea);
-    runResponseScript(response);
+    // runResponseScript(response);
 }
 
 function runResponseScript(response) {
-    const scripts = response.match(/<script>([\s\S]*?)<\/script>/g);
-    if (!scripts) {
+    const scriptRegex = /(?:<script>([\s\S]*?)<\/script>)|(?:```(?:java)*script\s*([\s\S]*?)```)/g;
+    const matches = [...response.matchAll(scriptRegex)];
+    
+    if (!matches.length) {
         return;
     }
-    scripts.forEach(script => {
-        let code = script.replace(/<script>|<\/script>/g, '');
+
+    matches.forEach(match => {
+        let code = match[1] || match[2];
+
         code = `(async function() {
             ${code}
-          })()`;
+        })()`;
+        
         const scriptElement = document.createElement('script');
         scriptElement.textContent = trustedScriptPolicy.createScript(code);
         document.body.appendChild(scriptElement);
@@ -178,7 +183,7 @@ function initDomUltimext() {
     <button id="downvote_button" class="ultimext_button danger" onclick="downvote()">Downvote</button>
     <button id="save_fine_tuning_example" class="ultimext_button success" onclick="saveFineTuningExample()">Save training example</button>
 
-    <dialog id="hint_dialog">
+    <dialog id="hint_dialog" style="height: 50vh;width: 30vw;">
         <div id="hint_container" style="margin-bottom: 15px;">
             <label class="ultimext_label" for="hint_textarea">Hint:</label>
             <textarea class="ultimext_textarea" id="hint_textarea" name="hint" oninput="resizeTextarea(this)"></textarea>

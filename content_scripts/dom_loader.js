@@ -28,7 +28,7 @@ let mutationCount = 0;
 let lastMutationTime = Date.now();
 let lastScrollHeight = 0;
 let isStable = false;
-let stabilityTimeout;
+let stabilityInterval;
 const initial_time = Date.now();
 
 const observer = new MutationObserver((mutations) => {
@@ -36,10 +36,10 @@ const observer = new MutationObserver((mutations) => {
     lastMutationTime = Date.now();
     lastScrollHeight = document.body.scrollHeight;
 
-    clearTimeout(stabilityTimeout);
+    clearInterval(stabilityInterval);
 
     // Check stability after a delay
-    stabilityTimeout = setTimeout(checkStability, 500);
+    stabilityInterval = setInterval(checkStability, 1500);
 });
 
 window.addEventListener('DOMContentLoaded', e => {
@@ -69,6 +69,6 @@ function checkStability() {
                 timestamp: Date.now()
             }
         }));
-        clearTimeout(stabilityTimeout);
+        clearInterval(stabilityInterval);
     }
 }

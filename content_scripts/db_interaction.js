@@ -3,11 +3,18 @@ const BACKEND_URL = 'https://localhost:5000';
 
 
 async function getAndJSON2(url) {
-    const resp = await fetch(url, {
-        // mode: 'no-cors'
-    });
-    const response = await resp.json();
-    return response;
+    try {
+        const resp = await fetch(url, {
+            // mode: 'no-cors'
+        });
+        const response = await resp.json();
+        return response;
+    } catch {
+        return {
+            success: false,
+        }
+    }
+    
 }
 
 async function postAndJSON2(url, data) {
