@@ -87,7 +87,7 @@ function processLLMResponse(response) {
     const result_textarea = document.getElementById('ultimext_result');
     result_textarea.value = response;
     resizeTextarea(result_textarea);
-    // runResponseScript(response);
+    runResponseScript(response);
 }
 
 function runResponseScript(response) {
