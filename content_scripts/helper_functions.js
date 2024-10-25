@@ -27,12 +27,72 @@ function downloadFileFromSrc(src, name) {
 }
 
 
+function handleImage(image) { // returns a file
+    return new Promise((resolve, reject) => {
+        // Create message handler that will be cleaned up
+        function handleMessageEvent(event) {
+            if (event.data.type !== 'IMAGE_PROCESSED') {
+                return;
+            }
+            // Clean up the event listener
+            window.removeEventListener('message', handleMessageEvent);
+
+            if (!event.data.payload.base64Data) {
+                reject(new Error('Failed to process image'));
+                return;
+            }
+
+            try {
+                const imageFile = dataURLtoFile(event.data.payload.base64Data, 'context_image.jpg');
+                resolve(imageFile);
+            } catch (error) {
+                reject(error);
+            }
+
+        }
+
+        // Add the event listener
+        window.addEventListener('message', handleMessageEvent);
+
+        // Send the message
+        window.postMessage({
+            type: 'PROCESS_IMAGE',
+            payload: {
+                src: image.src || image.srcset || image.dataset.src,
+                width: image.naturalWidth,
+                height: image.naturalHeight
+            }
+        }, '*');
+
+        // Add timeout to prevent hanging
+        setTimeout(() => {
+            window.removeEventListener('message', handleMessageEvent);
+            reject(new Error('Image processing timed out'));
+        }, 10000); // 10 second timeout
+    });
+}
+
+// Utility function to convert base64 to File
+function dataURLtoFile(dataurl, filename) {
+    let arr = dataurl.split(','),
+        mime = arr[0].match(/:(.*?);/)[1],
+        bstr = atob(arr[1]);
+    let n = bstr.length;
+    let u8arr = new Uint8Array(n);
+    while (n--) {
+        u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new File([u8arr], filename, { type: mime });
+}
+
+
 async function simpleGetCompletion(prompt, system_prompt = "", context = "", provider = "openAI") {
-    return getLLMCompletion({
-        system_prompt,
-        prompt,
-        context
-    }, provider);
+    const form_data = new FormData();
+    form_data.set('prompt', prompt);
+    form_data.set('system_prompt', system_prompt);
+    form_data.set('context', context);
+
+    return getLLMCompletion(form_data, provider);
 }
 
 
@@ -56,7 +116,7 @@ function handleShittyUrls(href, node) {
         return "";
     } catch {
         return href;
-    }  
+    }
 }
 
 function handleTitle(title, node) {
@@ -87,7 +147,7 @@ function optimizeClassNames(doc_body) {
         elements_by_class_name[class_name] = [...doc_body.getElementsByClassName(class_name)].map(x => x.ordering_number).sort().join(',');
     }
 
-    delete(elements_by_class_name.context_element);
+    delete (elements_by_class_name.context_element);
 
     const class_names_by_node_collection = Object.entries(elements_by_class_name).reduce((acc, key_value) => {
         const elements_hash = key_value[1];
@@ -114,7 +174,7 @@ function optimizeClassNames(doc_body) {
     return sub_optimal_classes;
 }
 
-function cleanHTML(html_string, ) {
+function cleanHTML(html_string,) {
     const tags_to_remove = ['script', 'style', 'link', 'meta', 'noscript', 'iframe', 'svg', 'code', 'noscript', 'i'];
     const max_length_attributes_to_keep = { id: 50, class: 0, title: 250, name: 50, value: 50 };
     const query_selectors_to_remove = ["#ultimate_extension_div", '#toggle_ultimext'];
@@ -198,7 +258,7 @@ function cleanHTML(html_string, ) {
             }
             return onlyChildPolicy(child_node);
         }
-    
+
         for (let child_node of node.childNodes) {
             new_child = onlyChildPolicy(child_node);
             node.replaceChild(new_child, child_node);
@@ -233,7 +293,7 @@ function normalizeWhitespace(str) {
         // Replace 2+ spaces with single space
         str = str.replace(/[ \t]+/g, ' ');
     } while (oldStr !== str);
-    
+
     return str;
 }
 
@@ -269,7 +329,7 @@ async function sendPageHTML(address) { // Here, the address will most of the tim
 function cleanHTML2(html_string) {
     let last_length = Infinity;
     let html = html_string;
-    while (html.length < last_length ) {
+    while (html.length < last_length) {
         last_length = html.length
         html = cleanHTML(document.body.outerHTML)
     }

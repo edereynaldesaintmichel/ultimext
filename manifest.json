@@ -32,6 +32,11 @@
       "css": [
         "content_styles/ultimext.css"
       ]
+    },
+    {
+      "matches": ["<all_urls>"],
+      "js": ["bridge.js"],
+      "run_at": "document_start"
     }
   ],
   "icons": {

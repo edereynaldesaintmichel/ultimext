@@ -6,7 +6,16 @@ let pendingRequests = 0;
 const originalFetch = window.fetch;
 window.fetch = function (...args) {
     pendingRequests++;
-    return originalFetch.apply(this, args)
+    const request = originalFetch.call(window, ...args);
+    
+    // Ensure proper promise chain
+    return request
+        .then(response => {
+            return response; // Pass through the response
+        })
+        .catch(error => {
+            throw error; // Re-throw any errors
+        })
         .finally(() => {
             pendingRequests--;
             checkStability();

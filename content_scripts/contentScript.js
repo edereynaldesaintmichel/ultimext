@@ -17,8 +17,8 @@ window.addEventListener('load', e => {
 
     document.getElementById('to_send_to_gemini').addEventListener('submit', async e => {
         e.preventDefault();
-        const data = getDataToSend();
-        const response = await getLLMCompletion(data);
+        const data = await getDataToSend();
+        const response = await getLLMCompletion(data, 'anthropic');
         processLLMResponse(response);
     });
     if (current_page_url.searchParams.get('parse_html_id')) {
@@ -29,18 +29,42 @@ window.addEventListener('load', e => {
     }
 });
 
-function getDataToSend() {
+async function getDataToSend() {
+    // Get the form data from the form element
     const form_data = new FormData(document.getElementById('to_send_to_gemini'));
-
-    const data = [...form_data.entries()].reduce((acc, curr) => {
-        acc[curr[0]] = curr[1];
-        return acc;
-    }, {});
+    
+    // Handle HTML context type
     if (document.getElementById('context_textarea').getAttribute('data-context_type') === 'html') {
-        data.context = `Page url: ${location.href} \n\n HTML: ${data.context}`;
+        // Append page URL and HTML to context
+        form_data.set('context', `Page url: ${location.href} \n\n HTML: ${form_data.get('context')}`);
+
+        // Get context elements
+        const context_elements = document.getElementsByClassName('context_element');
+        if (context_elements.length !== 1) {
+            return form_data;
+        }
+        
+        // Get images from context
+        const imgs = [context_elements[0].closest('img')] || context_elements[0].getElementsByTagName('img');
+        if (imgs.length !== 1) {
+            return form_data;
+        }
+        
+        const image = imgs[0];
+        
+        // Handle image from different sources (src, srcset, or data-src)
+        if (image) {      
+            try {
+                const imageFile = await handleImage(image);
+                form_data.append('files', imageFile);
+            } catch (e) {
+                // Handle potential tainted canvas errors
+                console.error('Error converting image:', e);
+            }
+        }
     }
 
-    return data;
+    return form_data;
 }
 
 
@@ -94,28 +118,34 @@ function runScript() {
     runResponseScript(result);
 }
 
-async function getLLMCompletion(data, provider = "openAI") {
+async function getLLMCompletion(formData, provider = "openAI") {
     const provider_routes = {
         openAI: "send_to_openai",
-        gemini: "send_to_gemini",
+        anthropic: "send_to_anthropic",
     };
+
     if (!provider_routes[provider]) {
-        return {
-            result: "alert('bad provider')"
-        };
+        throw new Error('Invalid provider specified');
     }
-    try {
+
+    try {        
+        // Make the request
         const response = await fetch(`${BACKEND_URL}/${provider_routes[provider]}`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(data),
+            // Don't set Content-Type header - browser will set it automatically with boundary
+            body: formData,
         });
+
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            const errorData = await response.json().catch(() => null);
+            throw new Error(
+                errorData?.error || `HTTP error! status: ${response.status}`
+            );
         }
-        return (await response.json()).result;
+
+        const result = await response.json();
+        return result.result;
+
     } catch (error) {
         console.error('Error getting completion:', error);
         throw error;
@@ -217,15 +247,15 @@ function downvote() {
 
 
 async function submitHint() {
-    const data = getDataToSend();
-    data.prompt = data.prompt + `\nHint:\n\n${document.getElementById('hint_textarea').value}`;
-    const response = await getLLMCompletion(data);
+    const form_data = await getDataToSend();
+    form_data.set('prompt', form_data.get('prompt') + `\nHint:\n\n${document.getElementById('hint_textarea').value}`);
+    const response = await getLLMCompletion(form_data);
     processLLMResponse(response);
 }
 
 
 async function saveFineTuningExample() {
-    const data = getDataToSend();
+    const data = await getDataToSend();
     data.result = document.getElementById('ultimext_result').value;
     await postAndJSON2(`${BACKEND_URL}/save_fine_tuning_example`, data);
 }
