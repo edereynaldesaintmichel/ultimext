@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Gemini Text and HTML Processor",
+  "name": "Ultimext: In Browser Agent",
   "version": "1.2",
-  "description": "Select text or elements, send to Google Gemini for processing, and manage prompts",
+  "description": "An extension that uses AI to work for you.",
   "permissions": [
     "contextMenus",
     "activeTab",

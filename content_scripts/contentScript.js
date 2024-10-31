@@ -13,7 +13,15 @@ const trustedScriptPolicy = trustedTypes.createPolicy("trustedScriptPolicy", {
 
 window.addEventListener('load', e => {
     initDomUltimext();
-    getSystemPrompt();
+    getExtensionData().then(data => {
+        for (const key in data) {
+            const form_element = document.getElementById(key);
+            if (!form_element) {
+                continue;
+            }
+            form_element.value = data[key];
+        }
+    });
 
     document.getElementById('to_send_to_gemini').addEventListener('submit', async e => {
         e.preventDefault();
@@ -123,7 +131,7 @@ async function getLLMCompletion(formData, provider = "openAI") {
         openAI: "send_to_openai",
         anthropic: "send_to_anthropic",
     };
-
+    
     if (!provider_routes[provider]) {
         throw new Error('Invalid provider specified');
     }
@@ -135,34 +143,43 @@ async function getLLMCompletion(formData, provider = "openAI") {
             // Don't set Content-Type header - browser will set it automatically with boundary
             body: formData,
         });
-
+        
         if (!response.ok) {
             const errorData = await response.json().catch(() => null);
             throw new Error(
                 errorData?.error || `HTTP error! status: ${response.status}`
-            );
+                );
+            }
+            
+            const result = await response.json();
+            document.getElementById('save_fine_tuning_example').disabled = false;
+            return result.result;
+            
+        } catch (error) {
+            console.error('Error getting completion:', error);
+            throw error;
         }
-
-        const result = await response.json();
-        return result.result;
-
-    } catch (error) {
-        console.error('Error getting completion:', error);
-        throw error;
     }
-}
+    
 
+// Your main world script
+function getExtensionData() {
+    return new Promise((resolve, reject) => {
+        window.postMessage({ type: 'GET_EXTENSION_DATA' }, '*');
 
-async function getSystemPrompt() {
-    try {
-        const system_prompts = await getAllFromStore('system_prompts');
-        if (system_prompts.length == 0) {
-            return;
-        }
-        document.getElementById('system_prompt').value = system_prompts[0].text;
-    } catch (error) {
-        console.error('Error getting system prompt:', error);
-    }
+        window.addEventListener('message', function listener(event) {
+            // Only accept messages from the same frame
+            if (event.source !== window) return;
+
+            if (event.data.type && event.data.type === 'GET_EXTENSION_DATA_RESPONSE') {
+                window.removeEventListener('message', listener);
+                resolve(event.data.payload);
+            }
+        });
+
+        // Add a timeout in case the response never comes
+        setTimeout(() => reject(new Error('Timeout waiting for extension data')), 5000);
+    });
 }
 
 document.addEventListener('keydown', async e => {
@@ -185,33 +202,44 @@ function initDomUltimext() {
     const app_div = document.createElement('div');
     app_div.id = "ultimate_extension_div";
     app_div.style.display = "none";
-    app_div.innerHTML = escapeHTMLPolicy.createHTML(`<h2 style="color: black !important;">Gemini Text and HTML Processor</h2>
+    app_div.innerHTML = escapeHTMLPolicy.createHTML(`
     <form action="" id="to_send_to_gemini">
-        <div style="margin-bottom: 15px;">
-            <label class="ultimext_label" for="system_prompt">System Prompt:</label>
-            <textarea class="ultimext_textarea" id="system_prompt" name="system_prompt" oninput="resizeTextarea(this)"></textarea>
+        <button id="settings_toggle" type="button" onclick="toggleSettings()" style="border: none;background: transparent;font-size: larger;margin-bottom: 1rem;cursor: pointer;">⚙️</button>
+        <div id="ultimext_settings" class="d-none" style="margin-bottom: 45px;">
+            <div style="margin-bottom: 15px;">
+                <label class="ultimext_label" for="ultimext_api_key">Anthropic API Key:</label>
+                <input class="ultimext_textarea" type="text" id="ultimext_api_key" name="api_key">
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label class="ultimext_label" for="ultimext_system_prompt">System Prompt:</label>
+                <textarea class="ultimext_textarea" id="ultimext_system_prompt" name="system_prompt"
+                    oninput="resizeTextarea(this)"></textarea>
+            </div>
+            <a href="javascript:void(0);" id="ultimext_save_settings" class="ultimext_button" onclick="saveSettings()">Save
+                settings</a>
         </div>
-    
+
+
         <div style="margin-bottom: 15px;">
             <label class="ultimext_label" for="context_textarea">Context:</label>
-            <textarea class="ultimext_textarea" id="context_textarea" name="context" oninput="resizeTextarea(this)"></textarea>
+            <textarea class="ultimext_textarea" id="context_textarea" name="context"
+                oninput="resizeTextarea(this)"></textarea>
         </div>
-    
+
         <div style="margin-bottom: 15px;">
             <label class="ultimext_label" for="user_prompt_123456">Prompt:</label>
-            <input class="ultimext_textarea" id="user_prompt_123456" name="prompt"/>
+            <textarea class="ultimext_textarea" id="user_prompt_123456" name="prompt"
+                oninput="resizeTextarea(this)"></textarea>
         </div>
-    
-        <button id="send_gemini" class="ultimext_button" type="submit">Send
-            Gemini</button>
+
+        <button id="send_gemini" class="ultimext_button" type="submit">Send</button>
     </form>
     <h4 style="color: black !important; margin-top: 2rem;">Résultat</h4>
-    <textarea class="ultimext_textarea" id="ultimext_result">
-    
-    </textarea>
+    <textarea class="ultimext_textarea" id="ultimext_result"></textarea>
     <button id="run_script" class="ultimext_button" onclick="runScript()">Run script</button>
     <button id="downvote_button" class="ultimext_button danger" onclick="downvote()">Downvote</button>
-    <button id="save_fine_tuning_example" class="ultimext_button success" onclick="saveFineTuningExample()">Save training example</button>
+    <button id="save_fine_tuning_example" class="ultimext_button success" onclick="saveFineTuningExample(this)"
+        disabled>Save training example</button>
 
     <dialog id="hint_dialog" style="height: 50vh;width: 30vw;">
         <div id="hint_container" style="margin-bottom: 15px;">
@@ -233,7 +261,7 @@ function initDomUltimext() {
     document.body.appendChild(button);
 
     document.getElementById('user_prompt_123456').addEventListener('keydown', e => {
-        if (e.key !== 'Enter') {
+        if (e.key !== 'Enter' || e.shiftKey) {
             return;
         }
         e.preventDefault();
@@ -254,10 +282,43 @@ async function submitHint() {
 }
 
 
-async function saveFineTuningExample() {
-    const data = await getDataToSend();
-    data.result = document.getElementById('ultimext_result').value;
-    await postAndJSON2(`${BACKEND_URL}/save_fine_tuning_example`, data);
+async function saveSettings() {
+    const keys = ['ultimext_system_prompt', 'ultimext_api_key'];
+    let data = keys.reduce((acc, key) => {
+        acc[key] = document.getElementById(key)?.value;
+        return acc;
+    }, {});
+
+    window.postMessage({ type: 'SET_EXTENSION_DATA', data }, '*');
+}
+
+
+function toggleSettings() {
+    var settingsDiv = document.getElementById('ultimext_settings');
+    if (settingsDiv.classList.contains('d-none')) {
+        settingsDiv.classList.remove('d-none');
+    } else {
+        settingsDiv.classList.add('d-none');
+    }
+}
+
+
+async function saveFineTuningExample(button) {
+    if (button.disabled) {
+        return;
+    }
+    const conf = confirm("Êtes-vous certain de vouloir enregistrer cet exemple? S'il est mauvais, il pourrira la base d'entraînement.");
+    if (!conf) {
+        return;
+    }
+    const form_data = await getDataToSend();
+    form_data.append('result', document.getElementById('ultimext_result').value);
+    const response = await fetch(`${BACKEND_URL}/save_fine_tuning_example`, {
+        method: 'POST',
+        body: form_data,
+    });
+    button.disabled = true;
+    alert("Exemple enregistré, merci pour votre aide!!");
 }
 
 function toggleUltimext() {

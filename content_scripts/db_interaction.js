@@ -50,10 +50,6 @@ async function getAllFromStore(store) {
     return await getAndJSON2(`${BACKEND_URL}/db/${store}`);
 }
 
-async function sendToGemini(data) {
-    return await postAndJSON2(`${BACKEND_URL}/send_to_gemini`, data);
-}
-
 async function getEmbedding(text) {
     return await postAndJSON2(`${BACKEND_URL}/get_embedding`, text);
 }

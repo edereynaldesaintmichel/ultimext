@@ -31,7 +31,7 @@ function handleImage(image) { // returns a file
     return new Promise((resolve, reject) => {
         // Create message handler that will be cleaned up
         function handleMessageEvent(event) {
-            if (event.data.type !== 'IMAGE_PROCESSED') {
+            if (event.data.type !== 'PROCESS_IMAGE_RESPONSE') {
                 return;
             }
             // Clean up the event listener
