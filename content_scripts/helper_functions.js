@@ -43,7 +43,7 @@ function handleImage(image) { // returns a file
             }
 
             try {
-                const imageFile = dataURLtoFile(event.data.payload.base64Data, 'context_image.jpg');
+                const imageFile = dataURLtoFile(event.data.payload.base64Data, Math.random().toString().slice(2, 10));
                 resolve(imageFile);
             } catch (error) {
                 reject(error);

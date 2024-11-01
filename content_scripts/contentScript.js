@@ -7,12 +7,19 @@ let selection_end;
 let context_element;
 const current_page_url = new URL(location.href);
 
+if (current_page_url.searchParams.get('parse_html_id')) {
+    document.addEventListener('domStable', e => {
+        console.log('DOM is now stable!!!');
+        sendPageHTML(current_page_url.toString());
+    });
+}
+
 const trustedScriptPolicy = trustedTypes.createPolicy("trustedScriptPolicy", {
     createScript: (scriptString) => scriptString
 });
 
-window.addEventListener('load', e => {
-    initDomUltimext();
+window.addEventListener('load', async e => {
+    await initDomUltimext();
     getExtensionData().then(data => {
         for (const key in data) {
             const form_element = document.getElementById(key);
@@ -29,12 +36,6 @@ window.addEventListener('load', e => {
         const response = await getLLMCompletion(data, 'anthropic');
         processLLMResponse(response);
     });
-    if (current_page_url.searchParams.get('parse_html_id')) {
-        document.addEventListener('domStable', e => {
-            console.log('DOM is now stable!!!');
-            sendPageHTML(current_page_url.toString());
-        });
-    }
 });
 
 async function getDataToSend() {
@@ -198,57 +199,13 @@ document.addEventListener('keydown', async e => {
     }
 });
 
-function initDomUltimext() {
+async function initDomUltimext() {
     const app_div = document.createElement('div');
     app_div.id = "ultimate_extension_div";
     app_div.style.display = "none";
-    app_div.innerHTML = escapeHTMLPolicy.createHTML(`
-    <form action="" id="to_send_to_gemini">
-        <button id="settings_toggle" type="button" onclick="toggleSettings()" style="border: none;background: transparent;font-size: larger;margin-bottom: 1rem;cursor: pointer;">⚙️</button>
-        <div id="ultimext_settings" class="d-none" style="margin-bottom: 45px;">
-            <div style="margin-bottom: 15px;">
-                <label class="ultimext_label" for="ultimext_api_key">Anthropic API Key:</label>
-                <input class="ultimext_textarea" type="text" id="ultimext_api_key" name="api_key">
-            </div>
-            <div style="margin-bottom: 15px;">
-                <label class="ultimext_label" for="ultimext_system_prompt">System Prompt:</label>
-                <textarea class="ultimext_textarea" id="ultimext_system_prompt" name="system_prompt"
-                    oninput="resizeTextarea(this)"></textarea>
-            </div>
-            <a href="javascript:void(0);" id="ultimext_save_settings" class="ultimext_button" onclick="saveSettings()">Save
-                settings</a>
-        </div>
-
-
-        <div style="margin-bottom: 15px;">
-            <label class="ultimext_label" for="context_textarea">Context:</label>
-            <textarea class="ultimext_textarea" id="context_textarea" name="context"
-                oninput="resizeTextarea(this)"></textarea>
-        </div>
-
-        <div style="margin-bottom: 15px;">
-            <label class="ultimext_label" for="user_prompt_123456">Prompt:</label>
-            <textarea class="ultimext_textarea" id="user_prompt_123456" name="prompt"
-                oninput="resizeTextarea(this)"></textarea>
-        </div>
-
-        <button id="send_gemini" class="ultimext_button" type="submit">Send</button>
-    </form>
-    <h4 style="color: black !important; margin-top: 2rem;">Résultat</h4>
-    <textarea class="ultimext_textarea" id="ultimext_result"></textarea>
-    <button id="run_script" class="ultimext_button" onclick="runScript()">Run script</button>
-    <button id="downvote_button" class="ultimext_button danger" onclick="downvote()">Downvote</button>
-    <button id="save_fine_tuning_example" class="ultimext_button success" onclick="saveFineTuningExample(this)"
-        disabled>Save training example</button>
-
-    <dialog id="hint_dialog" style="height: 50vh;width: 30vw;">
-        <div id="hint_container" style="margin-bottom: 15px;">
-            <label class="ultimext_label" for="hint_textarea">Hint:</label>
-            <textarea class="ultimext_textarea" id="hint_textarea" name="hint" oninput="resizeTextarea(this)"></textarea>
-        </div>
-        <button id="submit_hint" class="ultimext_button" onclick="submitHint()">Submit Hint</button>
-    </dialog>
-    `);
+    const resp = await fetch(`${BACKEND_URL}/render_main`);
+    const html = await resp.text();
+    app_div.innerHTML = escapeHTMLPolicy.createHTML(html);
 
     const button = document.createElement('button');
     button.innerHTML = escapeHTMLPolicy.createHTML('UltimExt');
@@ -327,7 +284,11 @@ function toggleUltimext() {
 }
 
 function hideUltimext() {
-    document.getElementById("ultimate_extension_div").style.display = "none";
+    const ultimext_div = document.getElementById("ultimate_extension_div");
+    if (!ultimext_div) {
+        return;
+    }
+    ultimext_div.style.display = "none";
 }
 
 function showUltimext() {

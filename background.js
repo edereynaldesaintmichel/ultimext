@@ -25,7 +25,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'PROCESS_IMAGE') {
     fetchAndProcessImage(message.payload.src)
       .then(base64Data => {
-        sendResponse({ base64Data });
+        sendResponse({ base64Data});
       });
     return true; // Will respond asynchronously
   }
