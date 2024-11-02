@@ -261,7 +261,11 @@ function cleanHTML(html_string,) {
 
         for (let child_node of node.childNodes) {
             new_child = onlyChildPolicy(child_node);
-            node.replaceChild(new_child, child_node);
+            try {
+                node.replaceChild(new_child, child_node);
+            } catch(e) {
+                // Nothing, I don't care.
+            }
         }
 
         return node;
@@ -279,6 +283,9 @@ function cleanHTML(html_string,) {
     }
     optimizeClassNames(doc.body);
     // Return the cleaned HTML
+    if (!doc.body.firstElementChild) {
+        return doc.body.outerHTML;
+    }
     doc.body.firstElementChild.classList.add('context_element');
     return normalizeWhitespace(doc.body.innerHTML);
 }

@@ -377,19 +377,22 @@ document.addEventListener('mouseup', e => {
 });
 
 function getLowestCommonAncestor(element1, element2) {
-    if (!element1 || !element2) return null;
+
+    if (!element1 || !element2) {
+        return null
+    };
 
     const ancestors = new Set();
 
     while (element1) {
         ancestors.add(element1);
-        if (element1 === document.documentElement) break;
+        if (element1 === document.body) break;
         element1 = element1.parentElement;
     }
 
     while (element2) {
         if (ancestors.has(element2)) return element2;
-        if (element2 === document.documentElement) break;
+        if (element2 === document.body) break;
         element2 = element2.parentElement;
     }
 
@@ -404,6 +407,9 @@ function onMouseMoveWhenRightButtonDown(e) {
     selection_end = e.target;
 
     context_element = getLowestCommonAncestor(selection_start, selection_end);
+    if (!context_element) {
+        return;
+    }
     context_element.classList.add('context_element');
 }
 
