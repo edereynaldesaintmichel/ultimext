@@ -1,5 +1,5 @@
 // Replace with your actual backend URL
-const BACKEND_URL = 'https://localhost:5000';
+const BACKEND_URL = 'https://demo9.logisioux.com';
 
 
 async function getAndJSON2(url) {

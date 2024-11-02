@@ -41,7 +41,7 @@ window.addEventListener('load', async e => {
 async function getDataToSend() {
     // Get the form data from the form element
     const form_data = new FormData(document.getElementById('to_send_to_gemini'));
-    
+
     // Handle HTML context type
     if (document.getElementById('context_textarea').getAttribute('data-context_type') === 'html') {
         // Append page URL and HTML to context
@@ -52,17 +52,17 @@ async function getDataToSend() {
         if (context_elements.length !== 1) {
             return form_data;
         }
-        
+
         // Get images from context
         const imgs = [context_elements[0].closest('img')] || context_elements[0].getElementsByTagName('img');
         if (imgs.length !== 1) {
             return form_data;
         }
-        
+
         const image = imgs[0];
-        
+
         // Handle image from different sources (src, srcset, or data-src)
-        if (image) {      
+        if (image) {
             try {
                 const imageFile = await handleImage(image);
                 form_data.append('files', imageFile);
@@ -102,7 +102,7 @@ function processLLMResponse(response) {
 function runResponseScript(response) {
     const scriptRegex = /(?:<script>([\s\S]*?)<\/script>)|(?:```(?:java)*script\s*([\s\S]*?)```)/g;
     const matches = [...response.matchAll(scriptRegex)];
-    
+
     if (!matches.length) {
         return;
     }
@@ -113,7 +113,7 @@ function runResponseScript(response) {
         code = `(async function() {
             ${code}
         })()`;
-        
+
         const scriptElement = document.createElement('script');
         scriptElement.textContent = trustedScriptPolicy.createScript(code);
         document.body.appendChild(scriptElement);
@@ -132,36 +132,36 @@ async function getLLMCompletion(formData, provider = "openAI") {
         openAI: "send_to_openai",
         anthropic: "send_to_anthropic",
     };
-    
+
     if (!provider_routes[provider]) {
         throw new Error('Invalid provider specified');
     }
 
-    try {        
+    try {
         // Make the request
         const response = await fetch(`${BACKEND_URL}/${provider_routes[provider]}`, {
             method: 'POST',
             // Don't set Content-Type header - browser will set it automatically with boundary
             body: formData,
         });
-        
+
         if (!response.ok) {
             const errorData = await response.json().catch(() => null);
             throw new Error(
                 errorData?.error || `HTTP error! status: ${response.status}`
-                );
-            }
-            
-            const result = await response.json();
-            document.getElementById('save_fine_tuning_example').disabled = false;
-            return result.result;
-            
-        } catch (error) {
-            console.error('Error getting completion:', error);
-            throw error;
+            );
         }
+
+        const result = await response.json();
+        document.getElementById('save_fine_tuning_example').disabled = false;
+        return result.result;
+
+    } catch (error) {
+        console.error('Error getting completion:', error);
+        throw error;
     }
-    
+}
+
 
 // Your main world script
 function getExtensionData() {
@@ -305,8 +305,22 @@ function resizeTextarea(element) {
 
 
 document.addEventListener('contextmenu', e => {
-    e.preventDefault();
+    const selection = document.getSelection();
+    if (selection.anchorNode !== null && !selection.isCollapsed) {
+        e.preventDefault();
+    }
 });
+
+document.addEventListener('click', e => {
+    if (!e.ctrlKey || !e.target.closest('.context_element')) {
+        return;
+    }
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    e.stopPropagation();
+
+    return false;
+}, true);
 
 document.addEventListener('mousedown', e => {
     selection_end = null;
@@ -318,11 +332,14 @@ document.addEventListener('mousedown', e => {
     if (e.target.closest('#ultimate_extension_div') || e.target.closest('#toggle_ultimext')) {
         return;
     }
-    if (e.button !== 2) {
+    const selection = document.getSelection();
+    if ((e.button !== 2 || selection.anchorNode === null || selection.isCollapsed) && !e.ctrlKey) {
         hideUltimext();
         return;
     }
     e.preventDefault();
+    e.stopImmediatePropagation();
+    e.stopPropagation();
     selection_start = e.target;
     selection_end = null;
     document.addEventListener('mousemove', onMouseMoveWhenRightButtonDown);
@@ -335,11 +352,14 @@ document.addEventListener('mouseup', e => {
     if (e.target.closest('#ultimate_extension_div') || e.target.closest('#toggle_ultimext')) {
         return;
     }
-    if (e.button !== 2) {
+    const selection = document.getSelection();
+    if ((e.button !== 2 || selection.anchorNode === null || selection.isCollapsed) && !e.ctrlKey) {
         return;
     }
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    e.stopPropagation();
     showUltimext();
-    const selection = document.getSelection();
     const context_textarea = document.getElementById('context_textarea');
     let context = '';
     let context_type = 'text';
