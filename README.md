@@ -3,7 +3,7 @@
 ## Installation Guide (Developer Mode)
 2 minutes is all it takes
 
-1. Download the repo as a ZIP file by clicking the green button
+1. Download the repo as a ZIP file by clicking the green "code" button => download as ZIP
 2. Extract it wherever you want
 3. Open Chrome browser and navigate to `chrome://extensions/`
 4. Enable "Developer mode" by toggling the switch in the top-right corner
