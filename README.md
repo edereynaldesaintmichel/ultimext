@@ -1,4 +1,4 @@
-# Ultimext: In borwser agent
+# Ultimext: In browser agent
 
 ## Installation Guide (Developer Mode)
 2 minutes is all it takes
