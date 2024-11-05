@@ -1,6 +1,7 @@
-# Ultimext Chrome Extension
+# Ultimext: In borwser agent
 
 ## Installation Guide (Developer Mode)
+2 minutes is all it takes
 
 1. Download the repo as a ZIP file by clicking the green button
 2. Extract it wherever you want
