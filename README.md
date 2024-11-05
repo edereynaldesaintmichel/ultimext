@@ -15,7 +15,7 @@
 
 Ctrl (or shift) + click + drag on any page to select a part of it, then ask Claude to interact with it.
 
-This extension is currently **FREE** to use! It will remain free until the developer's Anthropic API credits are depleted.
+This extension is currently **FREE** to use! It will remain free until my personal Anthropic API credits are depleted.
 Once the credits are exhausted, you can purchase your own API key [on Anthropic's website](https://console.anthropic.com/)
 
 
