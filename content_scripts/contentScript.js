@@ -184,7 +184,7 @@ function getExtensionData() {
 }
 
 document.addEventListener('keydown', async e => {
-    if (!e.ctrlKey || e.key !== 's' || !e.target.closest('#system_prompt')) {
+    if (!e.ctrlKey && !e.shiftKey || e.key !== 's' || !e.target.closest('#system_prompt')) {
         return;
     }
     e.preventDefault();
@@ -312,7 +312,7 @@ document.addEventListener('contextmenu', e => {
 });
 
 document.addEventListener('click', e => {
-    if (!e.ctrlKey || !e.target.closest('.context_element')) {
+    if (!e.ctrlKey  && !e.shiftKey || !e.target.closest('.context_element')) {
         return;
     }
     e.preventDefault();
@@ -333,7 +333,7 @@ document.addEventListener('mousedown', e => {
         return;
     }
     const selection = document.getSelection();
-    if ((e.button !== 2 || selection.anchorNode === null || selection.isCollapsed) && !e.ctrlKey) {
+    if ((e.button !== 2 || selection.anchorNode === null || selection.isCollapsed) && !e.ctrlKey && !e.shiftKey) {
         hideUltimext();
         return;
     }
@@ -353,7 +353,7 @@ document.addEventListener('mouseup', e => {
         return;
     }
     const selection = document.getSelection();
-    if ((e.button !== 2 || selection.anchorNode === null || selection.isCollapsed) && !e.ctrlKey) {
+    if ((e.button !== 2 || selection.anchorNode === null || selection.isCollapsed) && !e.ctrlKey  && !e.shiftKey) {
         return;
     }
     e.preventDefault();
