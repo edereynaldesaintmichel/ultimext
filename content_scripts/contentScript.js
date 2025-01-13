@@ -131,6 +131,7 @@ async function getLLMCompletion(formData, provider = "openAI") {
     const provider_routes = {
         openAI: "send_to_openai",
         anthropic: "send_to_anthropic",
+        google: "send_to_gemini",
     };
 
     if (!provider_routes[provider]) {
