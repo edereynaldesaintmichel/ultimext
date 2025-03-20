@@ -33,7 +33,7 @@ window.addEventListener('load', async e => {
     document.getElementById('to_send_to_gemini').addEventListener('submit', async e => {
         e.preventDefault();
         const data = await getDataToSend();
-        const response = await getLLMCompletion(data, 'anthropic');
+        const response = await getLLMCompletion(data, 'google');
         processLLMResponse(response);
     });
 });
