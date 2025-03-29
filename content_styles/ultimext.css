@@ -63,3 +63,36 @@
 .success {
     background-color: rgb(75, 209, 75)!important;
 }
+
+
+/* minimal-la.css */
+
+@font-face {
+    font-family: 'Line Awesome Free'; /* Check exact name in original CSS */
+    font-style: normal;
+    font-weight: 900; /* Weight for 'las' solid icons */
+    font-display: block;
+    /* IMPORTANT: Update the path to where you place the font file */
+    /* Use chrome.runtime.getURL for dynamic path in extensions */
+    src: url('chrome-extension://__MSG_@@extension_id__/fonts/la-solid-900.woff2') format('woff2');
+    /* Add other font formats (.woff) if needed for broader compatibility, though woff2 is widely supported */
+  }
+  
+  /* Base styles for solid icons (.las) */
+  .las {
+    font-family: 'Line Awesome Free'; /* Must match @font-face */
+    font-weight: 900; /* Must match @font-face */
+    /* --- Copy other relevant base styles below --- */
+    -moz-osx-font-smoothing: grayscale;
+    -webkit-font-smoothing: antialiased;
+    display: inline-block;
+    font-style: normal;
+    font-variant: normal;
+    text-rendering: auto;
+    line-height: 1;
+  }
+  
+  /* Specific icon style */
+  .la-magic:before {
+    content: "\f0d0"; /* The unicode character for la-magic */
+  }

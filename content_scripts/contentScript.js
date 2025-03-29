@@ -204,27 +204,102 @@ async function initDomUltimext() {
     const app_div = document.createElement('div');
     app_div.id = "ultimate_extension_div";
     app_div.style.display = "none";
-    const resp = await fetch(`${BACKEND_URL}/render_main`);
-    const html = await resp.text();
-    app_div.innerHTML = escapeHTMLPolicy.createHTML(html);
+    // Consider adding error handling for the fetch
+    try {
+        const resp = await fetch(`${BACKEND_URL}/render_main`);
+        if (!resp.ok) {
+            throw new Error(`HTTP error! status: ${resp.status}`);
+        }
+        const html = await resp.text();
+        // Ensure escapeHTMLPolicy is defined and appropriate for your context
+        // If not available (e.g., standard web page context), you might need a different sanitization method
+        // or trust the source if applicable (use with caution).
+        // For simplicity assuming escapeHTMLPolicy is available and works:
+        app_div.innerHTML = (typeof escapeHTMLPolicy !== 'undefined')
+            ? escapeHTMLPolicy.createHTML(html)
+            : html; // Fallback - use only if HTML is trusted or sanitized elsewhere
+
+    } catch (error) {
+        console.error("Failed to fetch or render main extension UI:", error);
+        // Optionally provide fallback UI or disable the button
+        return; // Stop initialization if essential UI fails
+    }
+
 
     const button = document.createElement('button');
-    button.innerHTML = escapeHTMLPolicy.createHTML('UltimExt');
-    button.style.cssText = "color: white;background-color: #027edd;padding: 1rem;position: fixed;bottom: 5rem;right: 1rem;border: none;border-radius: 1rem;font-size: 1.5rem;font-weight: bold;cursor: pointer; z-index:99999;";
+    // Use the Line Awesome magic icon
+    const iconHTML = '<i class="las la-magic"></i>';
+    button.innerHTML = (typeof escapeHTMLPolicy !== 'undefined')
+        ? escapeHTMLPolicy.createHTML(iconHTML)
+        : iconHTML; // Fallback for icon HTML (generally safe)
+
+    // Adjust styles for a smaller, discrete icon button
+    button.style.cssText = `
+        color: white;
+        background-color: #027edd; /* Consider a less saturated color for more discretion? e.g., #3B82F6 or a grey */
+        position: fixed;
+        bottom: 1.5rem; /* Slightly lower or higher? Adjust as needed */
+        right: 1.5rem;
+        border: none;
+        border-radius: 50%; /* Make it circular */
+        font-size: 1.1rem; /* Smaller icon size */
+        cursor: pointer;
+        z-index: 99999; /* Ensure it's on top */
+        width: 2.8rem;   /* Fixed width */
+        height: 2.8rem;  /* Fixed height */
+        padding: 0; /* Remove padding, use flex to center */
+        display: inline-flex; /* Use flexbox for centering */
+        align-items: center; /* Center icon vertically */
+        justify-content: center; /* Center icon horizontally */
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2); /* Optional subtle shadow */
+        transition: background-color 0.2s ease; /* Smooth hover effect */
+    `;
+    // Optional: Add a hover effect
+    button.onmouseover = () => { button.style.backgroundColor = '#005ea6'; }; // Darken on hover
+    button.onmouseout = () => { button.style.backgroundColor = '#027edd'; }; // Restore original color
+
     button.id = "toggle_ultimext";
+    // Add an accessible label for screen readers
+    button.setAttribute('aria-label', 'Toggle Agent Extension');
+    button.setAttribute('title', 'Toggle Agent Extension'); // Tooltip for mouse users
+
     button.addEventListener('click', e => {
-        app_div.style.display = app_div.style.display === 'none' ? 'block' : 'none';
+        const isHidden = app_div.style.display === 'none';
+        app_div.style.display = isHidden ? 'block' : 'none';
+         // Optional: Change icon or style based on state
+        // button.innerHTML = escapeHTMLPolicy.createHTML(isHidden ? '<i class="las la-times"></i>' : '<i class="las la-magic"></i>');
+        // button.setAttribute('aria-label', isHidden ? 'Close Agent Extension' : 'Open Agent Extension');
     });
+
+    // Append elements only if initialization was successful
     document.body.appendChild(app_div);
     document.body.appendChild(button);
 
-    document.getElementById('user_prompt_123456').addEventListener('keydown', e => {
-        if (e.key !== 'Enter' || e.shiftKey) {
-            return;
-        }
-        e.preventDefault();
-        e.target.closest('form').dispatchEvent(new Event('submit'));
-    });
+    // Add event listener only if the element exists in the fetched HTML
+    const userInput = document.getElementById('user_prompt_123456');
+    if (userInput) {
+        userInput.addEventListener('keydown', e => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                const form = e.target.closest('form');
+                if (form) {
+                    // Dispatching submit event might not trigger all form handlers,
+                    // consider calling form.requestSubmit() if available, or finding the submit button and clicking it.
+                    // form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+                    // Safer alternative:
+                    const submitButton = form.querySelector('button[type="submit"]');
+                     if (submitButton) {
+                         submitButton.click();
+                     } else {
+                        // Fallback if no explicit submit button
+                        form.requestSubmit ? form.requestSubmit() : form.submit();
+                     }
+                }
+            }
+        });
+    } else {
+        console.warn("Element with ID 'user_prompt_123456' not found in fetched HTML.");
+    }
 }
 
 function downvote() {

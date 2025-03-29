@@ -11,6 +11,12 @@
     "tabs",
     "declarativeNetRequest"
   ],
+  "web_accessible_resources": [
+    {
+      "resources": [ "fonts/la-solid-900.woff2" ],
+      "matches": [ "<all_urls>" ]
+    }
+  ],
   "host_permissions": [
     "*://*/*"
   ],
@@ -27,7 +33,9 @@
         "content_scripts/helper_functions.js",
         "content_scripts/contentScript.js",
         "content_scripts/js-beautify.js",
-        "content_scripts/dom_loader.js"
+        "content_scripts/dom_loader.js",
+        "vendor/marked.min.js",
+        "vendor/purify.min.js"
       ],
       "css": [
         "content_styles/ultimext.css"
